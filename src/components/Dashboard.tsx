@@ -47,13 +47,17 @@ const Dashboard: React.FC = () => {
   const [showBudgetModal, setShowBudgetModal] = useState(false)
 
   useEffect(() => {
-    fetchDashboardStats()
+    if (user) {
+      fetchDashboardStats()
+    }
   }, [user])
 
   const fetchDashboardStats = async () => {
     if (!user) return
 
     try {
+      setLoading(true)
+      
       // Fetch current month's budgets
       const { data: budgets, error: budgetsError } = await supabase
         .from('budgets')
@@ -163,7 +167,7 @@ const Dashboard: React.FC = () => {
       value: `$${stats.remainingBalance.toLocaleString()}`,
       icon: Target,
       color: 'bg-blue-500',
-      change: `${stats.remainingBalance > 0 ? '+' : ''}${((stats.remainingBalance / stats.totalIncome) * 100).toFixed(1)}%`,
+      change: `${stats.remainingBalance > 0 ? '+' : ''}${stats.totalIncome > 0 ? ((stats.remainingBalance / stats.totalIncome) * 100).toFixed(1) : '0'}%`,
       positive: stats.remainingBalance > 0
     },
     {

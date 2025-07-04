@@ -44,7 +44,7 @@ const BudgetManager: React.FC = () => {
   const [conversationHistory, setConversationHistory] = useState<Array<{type: 'user' | 'ai', message: string}>>([])
   const [currentBudgetContext, setCurrentBudgetContext] = useState<any>({})
 
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<BudgetFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<BudgetFormData>({
     resolver: yupResolver(budgetSchema),
     defaultValues: {
       income: 0,
@@ -134,16 +134,6 @@ const BudgetManager: React.FC = () => {
     }
   }
 
-  // Helper function to set form values
-  const setValue = (name: any, value: any) => {
-    const event = new Event('input', { bubbles: true })
-    const element = document.querySelector(`[name="${name}"]`) as HTMLInputElement
-    if (element) {
-      element.value = value.toString()
-      element.dispatchEvent(event)
-    }
-  }
-
   const populateFormFromAI = async (budgetData: any) => {
     if (budgetData.income) {
       setValue('income', budgetData.income)
@@ -192,6 +182,9 @@ const BudgetManager: React.FC = () => {
       setConversationHistory(prev => [...prev, { type: 'ai', message: successMessage }])
       reset()
       setCurrentBudgetContext({})
+      
+      // Dispatch event to update other components
+      window.dispatchEvent(new CustomEvent('budgetUpdated'))
     } catch (error) {
       console.error('Error creating budget:', error)
       const errorMessage = 'Sorry, there was an error creating your budget. Please try again.'
@@ -339,7 +332,6 @@ const BudgetManager: React.FC = () => {
                 <input
                   {...register('income')}
                   type="number"
-                  id="income"
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   placeholder="3000"
                 />
@@ -370,7 +362,6 @@ const BudgetManager: React.FC = () => {
                           <input
                             {...register(`categoryBudgets.${category.id}`)}
                             type="number"
-                            id={`categoryBudgets.${category.id}`}
                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0"
                           />

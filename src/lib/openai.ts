@@ -89,7 +89,7 @@ const extractBudgetData = (input: string, aiResponse: string) => {
   // Extract income
   const incomeMatch = lowerInput.match(/income[:\s]*\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/)
   if (incomeMatch) {
-    budgetData.income = parseFloat(incomeMatch[1].replace(',', ''))
+    budgetData.income = parseFloat(incomeMatch[1].replace(/,/g, ''))
   }
   
   // Extract expenses by category
@@ -100,7 +100,7 @@ const extractBudgetData = (input: string, aiResponse: string) => {
     const regex = new RegExp(`${category}[:\\s]*\\$?(\\d+(?:,\\d{3})*(?:\\.\\d{2})?)`, 'i')
     const match = lowerInput.match(regex)
     if (match) {
-      expenses[category] = parseFloat(match[1].replace(',', ''))
+      expenses[category] = parseFloat(match[1].replace(/,/g, ''))
     }
   })
   
