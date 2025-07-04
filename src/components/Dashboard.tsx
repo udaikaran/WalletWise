@@ -43,24 +43,23 @@ const Dashboard: React.FC = () => {
     categoriesOverBudget: 0
   })
   const [loading, setLoading] = useState(true)
+  const [showTransactionModal, setShowTransactionModal] = useState(false)
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardStats()
-    }
+    fetchDashboardStats()
   }, [user])
 
   const fetchDashboardStats = async () => {
     if (!user) return
 
     try {
-      setLoading(true)
-
-      // Fetch user's budgets
+      // Fetch current month's budgets
       const { data: budgets, error: budgetsError } = await supabase
         .from('budgets')
         .select('*')
         .eq('user_id', user.id)
+        .eq('status', 'active')
 
       if (budgetsError) {
         console.error('Error fetching budgets:', budgetsError)
@@ -130,13 +129,13 @@ const Dashboard: React.FC = () => {
   const handleQuickAction = (action: string) => {
     switch (action) {
       case 'add_transaction':
-        // Navigate to budget manager for now since we don't have a separate transaction form
-        window.dispatchEvent(new CustomEvent('navigate', { detail: 'budget' }))
+        setShowTransactionModal(true)
         break
       case 'set_budget':
-        window.dispatchEvent(new CustomEvent('navigate', { detail: 'budget' }))
+        setShowBudgetModal(true)
         break
       case 'view_analytics':
+        // This would be handled by parent component
         window.dispatchEvent(new CustomEvent('navigate', { detail: 'analytics' }))
         break
     }
@@ -300,6 +299,37 @@ const Dashboard: React.FC = () => {
           />
         </div>
       </motion.div>
+
+      {/* Quick Action Modals */}
+      {showTransactionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Transaction</h3>
+            <p className="text-gray-600 mb-4">Transaction feature coming soon!</p>
+            <button
+              onClick={() => setShowTransactionModal(false)}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showBudgetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Set Budget</h3>
+            <p className="text-gray-600 mb-4">Budget creation feature coming soon!</p>
+            <button
+              onClick={() => setShowBudgetModal(false)}
+              className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

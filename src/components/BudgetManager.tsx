@@ -61,6 +61,7 @@ const BudgetManager: React.FC = () => {
   const totalBudget = Object.values(categoryBudgets).reduce((sum, amount) => sum + (amount || 0), 0)
   const remainingBudget = income - totalBudget
 
+  // Voice recognition setup
   useEffect(() => {
     if ('webkitSpeechRecognition' in window) {
       const recognition = new (window as any).webkitSpeechRecognition()
@@ -99,10 +100,12 @@ const BudgetManager: React.FC = () => {
   const processAIInput = async (input: string) => {
     setIsProcessing(true)
     
+    // Add user message to conversation
     const newConversation = [...conversationHistory, { type: 'user' as const, message: input }]
     setConversationHistory(newConversation)
     
     try {
+      // Get current form values for context
       const currentValues = watch()
       const context = {
         currentIncome: currentValues.income,
@@ -113,8 +116,10 @@ const BudgetManager: React.FC = () => {
       const response = await analyzeFinancialInput(input, context)
       setAiResponse(response.message)
       
+      // Add AI response to conversation
       setConversationHistory(prev => [...prev, { type: 'ai', message: response.message }])
       
+      // Parse and populate form if budget data detected
       if (response.budgetData) {
         await populateFormFromAI(response.budgetData)
         setCurrentBudgetContext(prev => ({ ...prev, ...response.budgetData }))
@@ -129,6 +134,7 @@ const BudgetManager: React.FC = () => {
     }
   }
 
+  // Helper function to set form values
   const setValue = (name: any, value: any) => {
     const event = new Event('input', { bubbles: true })
     const element = document.querySelector(`[name="${name}"]`) as HTMLInputElement
@@ -151,6 +157,7 @@ const BudgetManager: React.FC = () => {
       })
     }
     
+    // Auto-generate budget name if not set
     const currentBudgetName = watch('budgetName')
     if (!currentBudgetName) {
       const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -163,6 +170,7 @@ const BudgetManager: React.FC = () => {
 
     setIsProcessing(true)
     try {
+      // Save budget to database
       const { data: budgetData, error: budgetError } = await supabase
         .from('budgets')
         .insert([
@@ -178,28 +186,6 @@ const BudgetManager: React.FC = () => {
         .single()
 
       if (budgetError) throw budgetError
-
-      const categoryTransactions = Object.entries(data.categoryBudgets)
-        .filter(([_, amount]) => amount > 0)
-        .map(([categoryId, amount]) => {
-          const category = categories.find(cat => cat.id === categoryId)
-          return {
-            budget_id: budgetData.id,
-            category_id: category?.id || null,
-            amount: amount,
-            description: `Budget allocation for ${category?.name || categoryId}`,
-            transaction_date: new Date().toISOString().split('T')[0],
-            is_recurring: false
-          }
-        })
-
-      if (categoryTransactions.length > 0) {
-        console.log('Category transactions would be created:', categoryTransactions)
-      }
-
-      window.dispatchEvent(new CustomEvent('budgetUpdated', { 
-        detail: { budgetId: budgetData.id, budget: budgetData }
-      }))
 
       const successMessage = `Budget "${data.budgetName}" created successfully! You have $${remainingBudget.toLocaleString()} remaining. Great job planning your finances!`
       setAiResponse(successMessage)
@@ -226,6 +212,7 @@ const BudgetManager: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* AI Input Section */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -237,6 +224,7 @@ const BudgetManager: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900">WalletWise AI Assistant</h3>
           </div>
 
+          {/* Conversation History */}
           {conversationHistory.length > 0 && (
             <div className="mb-4 max-h-40 overflow-y-auto space-y-2">
               {conversationHistory.slice(-4).map((msg, index) => (
@@ -318,6 +306,7 @@ const BudgetManager: React.FC = () => {
           </div>
         </motion.div>
 
+        {/* Budget Form */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}

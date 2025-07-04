@@ -62,15 +62,17 @@ const Analytics: React.FC = () => {
     if (!user) return
 
     try {
+      // First check if user has any budgets
       // Fetch current month's budgets
       const { data: budgets, error: budgetsError } = await supabase
         .from('budgets')
-        .select('*')
+        .select('id')
         .eq('user_id', user.id)
+        .eq('status', 'active')
 
       if (budgetsError) {
         console.error('Error fetching budgets:', budgetsError)
-        // Continue with empty budgets array instead of throwing
+        throw budgetsError
       }
 
       if (!budgets || budgets.length === 0) {
@@ -85,11 +87,13 @@ const Analytics: React.FC = () => {
         return
       }
 
+      // Fetch real data from Supabase
       // Get transactions with category information
       const startDate = getStartDateForPeriod(selectedPeriod)
       const endDate = new Date()
       const budgetIds = budgets.map(b => b.id)
       
+      // Get transactions with category information
       const { data: transactions, error: transactionsError } = await supabase
         .from('transactions')
         .select(`
