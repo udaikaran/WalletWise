@@ -39,13 +39,18 @@ const AuthForm: React.FC = () => {
     setError('')
 
     try {
+      // Check if Supabase is properly configured
+      if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co') {
+        throw new Error('Please configure your Supabase connection first. Click the "Connect to Supabase" button in the top right.')
+      }
+      
       if (isSignUp) {
         await signUp(data.email, data.password, data.username!)
       } else {
         await signIn(data.email, data.password)
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setError(err.message || 'Please configure your Supabase connection to continue.')
     } finally {
       setIsLoading(false)
     }
