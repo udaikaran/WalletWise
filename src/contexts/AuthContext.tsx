@@ -40,24 +40,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('*')
         .eq('id', userId)
-        .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
+        .maybeSingle()
 
       if (error) {
         console.error('Error fetching user profile:', error)
-        setUserProfile(null)
-        return
+        return null
       }
 
-      if (data) {
-        setUserProfile(data)
-      } else {
-        // Profile doesn't exist, this is normal for new users
-        console.log('User profile not found, user may need to complete profile setup')
-        setUserProfile(null)
-      }
+      return data
     } catch (error) {
       console.error('Error fetching user profile:', error)
-      setUserProfile(null)
+      return null
     }
   }
 
@@ -76,22 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single()
 
       if (error) {
-        // Check if it's a duplicate key error (user already exists)
-        if (error.code === '23505') {
-          console.log('User profile already exists, fetching existing profile')
-          await fetchUserProfile(userId)
-          return
-        }
-        throw error
+        console.error('Error creating user profile:', error)
+        return null
       }
 
-      if (data) {
-        setUserProfile(data)
-      }
+      return data
     } catch (error) {
       console.error('Error creating user profile:', error)
-      // Don't throw here - we'll handle this gracefully
-      setUserProfile(null)
+      return null
     }
   }
 
@@ -100,7 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchUserProfile(session.user.id)
+        fetchUserProfile(session.user.id).then(profile => {
+          setUserProfile(profile)
+        })
       }
       setLoading(false)
     })
@@ -110,13 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        if (event === 'SIGNED_UP') {
-          // For new sign-ups, we'll create the profile in the signUp function
-          // Just fetch here in case it was already created
-          await fetchUserProfile(session.user.id)
-        } else {
-          await fetchUserProfile(session.user.id)
-        }
+        const profile = await fetchUserProfile(session.user.id)
+        setUserProfile(profile)
       } else {
         setUserProfile(null)
       }
@@ -141,19 +123,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email,
       password,
       options: {
-        emailRedirectTo: undefined // Disable email confirmation
+        emailRedirectTo: undefined
       }
     })
     
     if (error) throw error
 
-    // Create user profile immediately after successful auth signup
-    if (data.user && !data.user.email_confirmed_at) {
-      // For new users (not email confirmed), create profile
-      await createUserProfile(data.user.id, email, username)
-    } else if (data.user) {
-      // For existing users or confirmed users, just fetch profile
-      await fetchUserProfile(data.user.id)
+    // Create user profile after successful signup
+    if (data.user) {
+      const profile = await createUserProfile(data.user.id, email, username)
+      if (profile) {
+        setUserProfile(profile)
+      }
     }
   }
 
