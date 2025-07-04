@@ -40,20 +40,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('*')
         .eq('id', userId)
+        .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
+
+      if (error) {
+        console.error('Error fetching user profile:', error)
+        setUserProfile(null)
+        return
+      }
+
+      if (data) {
+        setUserProfile(data)
+      } else {
+        // Profile doesn't exist, this is normal for new users
+        console.log('User profile not found, user may need to complete profile setup')
+        setUserProfile(null)
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+      setUserProfile(null)
+    }
+  }
+
+  const createUserProfile = async (userId: string, email: string, username: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: userId,
+            email,
+            username
+          }
+        ])
+        .select()
         .single()
 
       if (error) {
-        // Handle case where user profile doesn't exist yet
-        if (error.code === 'PGRST116') {
-          console.log('User profile not found, this is normal for new users')
-          setUserProfile(null)
+        // Check if it's a duplicate key error (user already exists)
+        if (error.code === '23505') {
+          console.log('User profile already exists, fetching existing profile')
+          await fetchUserProfile(userId)
           return
         }
         throw error
       }
-      setUserProfile(data)
+
+      if (data) {
+        setUserProfile(data)
+      }
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      console.error('Error creating user profile:', error)
+      // Don't throw here - we'll handle this gracefully
       setUserProfile(null)
     }
   }
@@ -69,10 +106,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
+      
       if (session?.user) {
-        await fetchUserProfile(session.user.id)
+        if (event === 'SIGNED_UP') {
+          // For new sign-ups, we'll create the profile in the signUp function
+          // Just fetch here in case it was already created
+          await fetchUserProfile(session.user.id)
+        } else {
+          await fetchUserProfile(session.user.id)
+        }
       } else {
         setUserProfile(null)
       }
@@ -100,33 +144,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: undefined // Disable email confirmation
       }
     })
+    
     if (error) throw error
 
-    // Create user profile
-    if (data.user) {
-      try {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: data.user.id,
-              email,
-              username
-            }
-          ])
-        
-        if (profileError) {
-          console.error('Error creating user profile:', profileError)
-          // Don't throw here - the user is still created in auth, just profile creation failed
-          // We'll handle this gracefully
-        } else {
-          // Fetch the newly created profile
-          await fetchUserProfile(data.user.id)
-        }
-      } catch (profileError) {
-        console.error('Error in profile creation process:', profileError)
-        // Continue without throwing - user auth was successful
-      }
+    // Create user profile immediately after successful auth signup
+    if (data.user && !data.user.email_confirmed_at) {
+      // For new users (not email confirmed), create profile
+      await createUserProfile(data.user.id, email, username)
+    } else if (data.user) {
+      // For existing users or confirmed users, just fetch profile
+      await fetchUserProfile(data.user.id)
     }
   }
 

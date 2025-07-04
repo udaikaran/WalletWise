@@ -50,8 +50,22 @@ const AuthForm: React.FC = () => {
       } else {
         await signIn(data.email, data.password)
       }
+      
+      // Clear form on successful auth
+      reset()
     } catch (err: any) {
-      setError(err.message || 'Please configure your Supabase connection to continue.')
+      console.error('Authentication error:', err)
+      
+      // Handle specific error cases
+      if (err.message?.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials and try again.')
+      } else if (err.message?.includes('User already registered')) {
+        setError('An account with this email already exists. Please sign in instead.')
+      } else if (err.message?.includes('Supabase')) {
+        setError('Please configure your Supabase connection to continue.')
+      } else {
+        setError(err.message || 'An error occurred. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }

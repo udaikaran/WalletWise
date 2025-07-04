@@ -43,7 +43,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab }) =>
               
               <div className="flex items-center space-x-4 ml-auto">
                 <span className="text-sm text-gray-600">
-                  Welcome, {userProfile?.username || user?.email?.split('@')[0] || 'User'}
+                  Welcome, {userProfile?.username || user?.email?.split('@')[0] || user?.user_metadata?.username || 'User'}
                 </span>
                 <button
                   onClick={handleSignOut}
