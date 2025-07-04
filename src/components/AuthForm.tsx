@@ -5,6 +5,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { Eye, EyeOff, DollarSign, TrendingUp, Shield, Brain, Wallet } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { isSupabaseReady } from '../lib/supabase'
 
 const signInSchema = yup.object({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -40,7 +41,7 @@ const AuthForm: React.FC = () => {
 
     try {
       // Check if Supabase is properly configured
-      if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co') {
+      if (!isSupabaseReady) {
         throw new Error('Please configure your Supabase connection first. Click the "Connect to Supabase" button in the top right.')
       }
       
