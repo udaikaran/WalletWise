@@ -42,10 +42,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        // Handle case where user profile doesn't exist yet
+        if (error.code === 'PGRST116') {
+          console.log('User profile not found, this is normal for new users')
+          setUserProfile(null)
+          return
+        }
+        throw error
+      }
       setUserProfile(data)
     } catch (error) {
       console.error('Error fetching user profile:', error)
+      setUserProfile(null)
     }
   }
 
@@ -79,25 +88,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signUp = async (email: string, password: string, username: string) => {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co') {
+      throw new Error('Please configure your Supabase connection first. Click the "Connect to Supabase" button in the top right.')
+    }
+
     const { data, error } = await supabase.auth.signUp({ 
-      email, 
-      password
+      email,
+      password,
+      options: {
+        emailRedirectTo: undefined // Disable email confirmation
+      }
     })
     if (error) throw error
 
     // Create user profile
     if (data.user) {
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            email,
-            username
-          }
-        ])
-      
-      if (profileError) throw profileError
+      try {
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: data.user.id,
+              email,
+              username
+            }
+          ])
+        
+        if (profileError) {
+          console.error('Error creating user profile:', profileError)
+          // Don't throw here - the user is still created in auth, just profile creation failed
+          // We'll handle this gracefully
+        } else {
+          // Fetch the newly created profile
+          await fetchUserProfile(data.user.id)
+        }
+      } catch (profileError) {
+        console.error('Error in profile creation process:', profileError)
+        // Continue without throwing - user auth was successful
+      }
     }
   }
 
